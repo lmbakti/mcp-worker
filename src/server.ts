@@ -31,6 +31,7 @@ function createServer() {
 			const response = await fetch(apiUrl.toString(), {
 				headers: {
 					"X-Api-Key": env.NEWSAPI_KEY,
+					"User-Agent": "ARUNIKA-News-MCP/1.0",
 				},
 			});
 
@@ -122,6 +123,7 @@ function createServer() {
 			const response = await fetch(apiUrl.toString(), {
 				headers: {
 					"X-Api-Key": env.NEWSAPI_KEY,
+					"User-Agent": "ARUNIKA-News-MCP/1.0",
 				},
 			});
 
