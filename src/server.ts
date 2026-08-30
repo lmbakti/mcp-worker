@@ -639,6 +639,17 @@ export default {
 		const url = new URL(request.url);
 
 		if (
+			url.pathname === "/ping" ||
+			url.pathname === "/ping/"
+		) {
+			return Response.json({
+				ok: true,
+				message: "ARUNIKA new Worker code is active",
+				time: new Date().toISOString(),
+			});
+		}
+
+		if (
 			url.pathname === "/test-drive" ||
 			url.pathname === "/test-drive/"
 		) {
