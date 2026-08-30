@@ -638,9 +638,10 @@ export default {
 	async fetch(request, env, ctx) {
 		const url = new URL(request.url);
 
-		// TEMPORARY TEST:
-		// Cloudflare Worker -> Google Drive
-		if (url.pathname === "/test-drive") {
+		if (
+			url.pathname === "/test-drive" ||
+			url.pathname === "/test-drive/"
+		) {
 			try {
 				const result = await uploadTestFile(env as Env);
 
@@ -663,7 +664,6 @@ export default {
 			}
 		}
 
-		// Existing MCP server
 		return createMcpHandler(createServer)(
 			request,
 			env,
