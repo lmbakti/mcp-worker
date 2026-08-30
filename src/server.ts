@@ -675,6 +675,13 @@ export default {
 			}
 		}
 
+
+return Response.json({
+	debug: true,
+	pathname: url.pathname,
+	message: "ARUNIKA DEBUG ROUTER ACTIVE"
+});
+		
 		return createMcpHandler(createServer)(
 			request,
 			env,
