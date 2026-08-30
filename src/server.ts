@@ -6,6 +6,88 @@ import { z } from "zod";
 const NEWSAPI_BASE = "https://newsapi.org/v2";
 const USER_AGENT = "Indonesia-News-API3/2.0";
 
+interface Env {
+  NEWSAPI_KEY: string;
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+  GOOGLE_REFRESH_TOKEN: string;
+  GOOGLE_DRIVE_FOLDER_ID: string;
+}
+
+async function getGoogleAccessToken(env: Env): Promise<string> {
+  const body = new URLSearchParams({
+    client_id: env.GOOGLE_CLIENT_ID,
+    client_secret: env.GOOGLE_CLIENT_SECRET,
+    refresh_token: env.GOOGLE_REFRESH_TOKEN,
+    grant_type: "refresh_token",
+  });
+
+  const response = await fetch(
+    "https://oauth2.googleapis.com/token",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Google OAuth error ${response.status}: ${await response.text()}`
+    );
+  }
+
+  const data = await response.json() as {
+    access_token: string;
+  };
+
+  return data.access_token;
+}
+
+async function uploadTestFile(env: Env) {
+  const accessToken = await getGoogleAccessToken(env);
+
+  const metadata = {
+    name: "ARUNIKA_TEST_UPLOAD.txt",
+    parents: [env.GOOGLE_DRIVE_FOLDER_ID],
+  };
+
+  const boundary = "arunika_boundary";
+
+  const body =
+    `--${boundary}\r\n` +
+    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+    `${JSON.stringify(metadata)}\r\n` +
+    `--${boundary}\r\n` +
+    `Content-Type: text/plain; charset=UTF-8\r\n\r\n` +
+    `ARUNIKA Cloudflare to Google Drive test.\n` +
+    `Created: ${new Date().toISOString()}\r\n` +
+    `--${boundary}--`;
+
+  const response = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files" +
+      "?uploadType=multipart&fields=id,name,createdTime",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+      },
+      body,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Google Drive error ${response.status}: ${await response.text()}`
+    );
+  }
+
+  return await response.json();
+}
+
 type NewsArticle = {
 	source?: {
 		id?: string | null;
@@ -553,11 +635,39 @@ function createServer() {
 }
 
 export default {
-	fetch(request, env, ctx) {
+	async fetch(request, env, ctx) {
+		const url = new URL(request.url);
+
+		// TEMPORARY TEST:
+		// Cloudflare Worker -> Google Drive
+		if (url.pathname === "/test-drive") {
+			try {
+				const result = await uploadTestFile(env as Env);
+
+				return Response.json({
+					success: true,
+					message: "Google Drive upload successful",
+					file: result,
+				});
+			} catch (error) {
+				return Response.json(
+					{
+						success: false,
+						error:
+							error instanceof Error
+								? error.message
+								: String(error),
+					},
+					{ status: 500 },
+				);
+			}
+		}
+
+		// Existing MCP server
 		return createMcpHandler(createServer)(
 			request,
 			env,
 			ctx,
 		);
 	},
-} satisfies ExportedHandler;
+} satisfies ExportedHandler<Env>;
